@@ -1,11 +1,14 @@
+use std::collections::HashMap;
 use anyhow::anyhow;
 use serenity::async_trait;
+use serenity::client;
 use serenity::model::channel::Message;
 use serenity::model::channel::GuildChannel;
 use serenity::model::gateway::Ready;
 use serenity::model::id::ChannelId;
 use serenity::model::id::UserId;
 use serenity::prelude::*;
+// use shuttle_service::Environment;
 use shuttle_secrets::SecretStore;
 use tracing::{error, info};
 
@@ -16,11 +19,20 @@ use async_openai::{
 
 struct Bot;
 
+struct PersistentData;
+
+impl TypeMapKey for PersistentData {
+	type Value = HashMap<String, String>;
+}
+
 static mut THREAD_IDS : String = String::new();
 
 
 #[async_trait]
 impl EventHandler for Bot {
+	
+	// async fn thread_list_sync()
+
 	async fn thread_create(&self, ctx: Context, channel: GuildChannel) {
 		// info!("thread: {:?}", channel);
 		unsafe {
@@ -49,6 +61,11 @@ impl EventHandler for Bot {
 			return;
 		}
 		info!("msg received from: {:?}", msg.author.name);
+
+		// show typing
+		if let Err(e) = msg.channel_id.broadcast_typing(&ctx.http).await {
+			error!("Error sending message: {:?}", e);
+		}
 		
 		// read all the messages in the thread (usually less than 50)
 		let msg_history = msg.channel_id.messages(&ctx.http, |retriever| {
@@ -124,44 +141,49 @@ async fn serenity(
 ) -> shuttle_serenity::ShuttleSerenity {
 	// Get the bot id set in `Secrets.toml`
 	let bot_id = if let Some(bot_id) = secret_store.get("BOT_ID") {
-		bot_id
-	} else {
+		bot_id} else {
 		return Err(anyhow!("'BOT_ID' was not found").into());
 	};
 	std::env::set_var("BOT_ID", bot_id);
 
 	// Get the parent channel id set in `Secrets.toml`
-	let parent_id = if let Some(parent_id) = secret_store.get("PARENT_ID") {
-		parent_id
-	} else {
+	let parent_id = if let Some(parent_id) = secret_store.get("PARENT_ID") { 
+		parent_id } else {
 		return Err(anyhow!("'PARENT_ID' was not found").into());
 	};
 	std::env::set_var("PARENT_ID", parent_id);
 
 	// Get the openai apikey set in `Secrets.toml`
-	let api_key = if let Some(api_key) = secret_store.get("OPENAI_API_KEY") {
-		api_key
-	} else {
+	let api_key = if let Some(api_key) = secret_store.get("OPENAI_API_KEY") { api_key } else {
 		return Err(anyhow!("'OPENAI_API_KEY' was not found").into());
 	};
 	std::env::set_var("OPENAI_API_KEY", api_key);
 
 	// Get the discord token set in `Secrets.toml`
-	let token = if let Some(token) = secret_store.get("DISCORD_TOKEN") {
-		token
-	} else {
+	let token = if let Some(token) = secret_store.get("DISCORD_TOKEN") { token } else {
 		return Err(anyhow!("'DISCORD_TOKEN' was not found").into());
-	};	
+	};
+
+	// check if shuttle running locally *dev bot overwrites prod bot*
+	// if Ok(secret_store.get("ENVIRONMENT")) {
+	// 	bot_id = 
+	// }
 
 	// Set gateway intents, which decides what events the bot will be notified about
 	let intents = GatewayIntents::GUILDS 
 		| GatewayIntents::GUILD_MESSAGES
+		// | GatewayIntents::GUILD_MESSAGE_TYPING
 		| GatewayIntents::MESSAGE_CONTENT;
 
-	let client = Client::builder(&token, intents)
-		.event_handler(Bot)
-		.await
-		.expect("Err creating client");
+	let mut client = Client::builder(&token, intents).event_handler(Bot).await.map_err(|e| anyhow!(e))?; {
+		let mut data = client.data.write().await;
+		data.insert::<PersistentData>(HashMap::default());
+		
+		// insert bot_id into data
+    // let persistent = data.get_mut::<PersistentData>().unwrap();
+    // persistent.insert("bot_id".to_string(), bot_id.to_string());
+	}
+	// .expect("Err creating client");
 
 	Ok(client.into())
 }
