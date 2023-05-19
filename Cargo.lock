@@ -963,6 +963,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-openai",
+ "lazy_static",
  "serenity",
  "shuttle-runtime",
  "shuttle-secrets",

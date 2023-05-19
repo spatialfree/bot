@@ -12,11 +12,6 @@ delta
   from: manual system prompt
   =
   step: manual linkage
-  // to:
-  // -
-  // from:
-  // =
-  // step:
 
 return
   static folder https://docs.shuttle.rs/resources/shuttle-static-folder
