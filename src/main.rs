@@ -21,6 +21,7 @@ lazy_static! {
 		let mut map = HashMap::new();
 		// map.insert("default".to_string(), "You are a helpful assistant.".to_string());
 		map.insert(ChannelId(1107008959388332043), "🌟 I want you to act similarly to StumbleUpon 🕵️‍♂️ and randomly suggest something really interesting 🤔 and worth exploring further🔍. Let's create a truly engaging experience for fun! 🤩💡🚀".to_string());
+		map.insert(ChannelId(1109159447516946456), "For fun, list five seemingly impossible things, then suggest and briefly explain two potential solutions or approaches for each of the five things using available technologies, (including AI and XR tech), Then offer to do five more".to_string());
 
 		map
 	};
@@ -127,7 +128,7 @@ impl EventHandler for Bot {
 		// chat call
 		let openai_client = async_openai::Client::new();
 		let request = CreateChatCompletionRequestArgs::default()
-			.max_tokens(512u16) // bad default?
+			.max_tokens(1024u16) // bad default?
 			.model("gpt-3.5-turbo")
 			.messages(msgs)
 			.build()
@@ -142,9 +143,24 @@ impl EventHandler for Bot {
 			.map(|choice| choice.message.content.clone())
 			.unwrap_or_else(String::new);
 
-		if let Err(e) = msg.channel_id.say(&ctx.http, last_message).await {
-			error!("Error sending message: {:?}", e);
-		}
+
+		let chunks = last_message.chars().collect::<Vec<_>>().chunks(2000).map(|chunk| chunk.iter().collect::<String>()).collect::<Vec<_>>();
+
+    // Send each chunk of the message as a separate message
+    for chunk in chunks {
+			msg.channel_id.say(&ctx.http, chunk).await.unwrap();
+    }
+
+		// alright this works
+		// though i want to chop them by 1000 instead of 2000
+		// and i want to stream in the chat completion
+		// so i can send the first message sooner
+		// but that is just polish
+
+		// the main thing is we need to be able to plug in a big prompt
+		// and customize the model
+		// to reduce the system prompt overhead
+
 	}
 
 	async fn ready(&self, _: Context, ready: Ready) {
@@ -204,6 +220,8 @@ async fn serenity(
 		.event_handler(Bot)
 		.await
 		.expect("Err creating client");
+
+
 
 	Ok(client.into())
 }
