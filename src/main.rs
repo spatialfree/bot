@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use anyhow::anyhow;
 use serenity::async_trait;
-use serenity::client;
+// use serenity::client;
 use serenity::model::channel::Message;
-use serenity::model::channel::GuildChannel;
+// use serenity::model::channel::GuildChannel;
 use serenity::model::gateway::Ready;
 use serenity::model::id::ChannelId;
 use serenity::model::id::UserId;
@@ -20,16 +20,18 @@ lazy_static! {
 	static ref CHANNEL_PROMPTS: HashMap<ChannelId, ChannelId> = { 
 		let mut map = HashMap::new();
 		//         ChannelId(chat                  ChannelId(prompt
-		// get channel id pairs from bots.txt file
-		let pairs = std::fs::read_to_string("bots.txt")
-			.expect("Something went wrong reading the file bots.txt");
+		map.insert(ChannelId(1103101252830765096), ChannelId(1110235580220063804));
 		
-		for pair in pairs.lines() {
-			let mut split = pair.split_whitespace();
-			let chat = split.next().unwrap().parse::<u64>().unwrap();
-			let prompt = split.next().unwrap().parse::<u64>().unwrap();
-			map.insert(ChannelId(chat), ChannelId(prompt));
-		}
+		// get channel id pairs from bots.txt file
+		// let pairs = std::fs::read_to_string("bots.txt")
+		// 	.expect("Something went wrong reading the file bots.txt");
+		
+		// for pair in pairs.lines() {
+		// 	let mut split = pair.split_whitespace();
+		// 	let chat = split.next().unwrap().parse::<u64>().unwrap();
+		// 	let prompt = split.next().unwrap().parse::<u64>().unwrap();
+		// 	map.insert(ChannelId(chat), ChannelId(prompt));
+		// }
 
 		map
 	};
