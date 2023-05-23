@@ -1,13 +1,39 @@
+use std::collections::HashMap;
 use anyhow::anyhow;
 use serenity::async_trait;
+use serenity::client;
 use serenity::model::channel::Message;
 use serenity::model::channel::GuildChannel;
 use serenity::model::gateway::Ready;
 use serenity::model::id::ChannelId;
 use serenity::model::id::UserId;
+// use serenity::model::prelude::ThreadListSyncEvent;
+// serenity::model::channel::ThreadsData;
 use serenity::prelude::*;
+// use shuttle_service::Environment;
 use shuttle_secrets::SecretStore;
 use tracing::{error, info};
+
+use lazy_static::lazy_static;
+
+lazy_static! {
+	static ref CHANNEL_PROMPTS: HashMap<ChannelId, ChannelId> = { 
+		let mut map = HashMap::new();
+		//         ChannelId(chat                  ChannelId(prompt
+		// get channel id pairs from bots.txt file
+		let pairs = std::fs::read_to_string("bots.txt")
+			.expect("Something went wrong reading the file bots.txt");
+		
+		for pair in pairs.lines() {
+			let mut split = pair.split_whitespace();
+			let chat = split.next().unwrap().parse::<u64>().unwrap();
+			let prompt = split.next().unwrap().parse::<u64>().unwrap();
+			map.insert(ChannelId(chat), ChannelId(prompt));
+		}
+
+		map
+	};
+}
 
 
 use async_openai::{
@@ -16,40 +42,75 @@ use async_openai::{
 
 struct Bot;
 
-static mut THREAD_IDS : String = String::new();
-
 
 #[async_trait]
 impl EventHandler for Bot {
-	async fn thread_create(&self, ctx: Context, channel: GuildChannel) {
-		// info!("thread: {:?}", channel);
-		unsafe {
-			let parent_id : ChannelId = std::env::var("PARENT_ID")
-				.expect("Expected a parent id in the environment")
-				.parse()
-				.expect("The parent id was not a valid id");
-			if channel.parent_id == Some(parent_id) && !THREAD_IDS.contains(&channel.id.to_string()) {
-				THREAD_IDS += &channel.id.to_string();
-				// info!("threads: {:?}", THREAD_IDS);
-				if let Err(e) = channel.say(&ctx.http, "Hello!").await {
-					error!("Error sending message: {:?}", e);
+	// async fn thread_create(&self, ctx: Context, channel: GuildChannel) {
+	// 	info!("thread: {:?}", channel);
+	// 	// unsafe {
+	// 	// 	let parent_id : ChannelId = std::env::var("CATEGORY_ID")
+	// 	// 		.expect("Expected a parent id in the environment")
+	// 	// 		.parse()
+	// 	// 		.expect("The parent id was not a valid id");
+	// 	// 	if channel.parent_id == Some(parent_id) && !THREAD_IDS.contains(&channel.id.to_string()) {
+	// 	// 		THREAD_IDS += &channel.id.to_string();
+	// 	// 		// info!("threads: {:?}", THREAD_IDS);
+	// 	// 		if let Err(e) = channel.say(&ctx.http, "Hello!").await {
+	// 	// 			error!("Error sending message: {:?}", e);
+	// 	// 		}
+	// 	// 	}
+	// 	// }
+	// }
+
+	async fn message(&self, ctx: Context, msg: Message) {
+		// stop it from looping back in on itself
+		if msg.is_own(&ctx.cache) { 
+			return;
+		}
+		
+		// check if category is correct
+		// let category_id : ChannelId = std::env::var("CATEGORY_ID")
+		// 	.expect("Expected a category id in the environment")
+		// 	.parse()
+		// 	.expect("The category id was not a valid id");
+		// if category_id != msg.category_id(&ctx.cache).unwrap_or_else(|| ChannelId(0)) {
+		// 	return;
+		// }
+		// that doesn't work for some inexplicable reason...
+		
+		let mut in_chat_thread = false;
+		let mut system_prompt = "".to_string();
+		let threads = msg.guild(&ctx.cache).unwrap().threads;
+		for thread in threads {
+			// if inside a matching thread
+			if msg.channel_id == thread.id {
+				// check hash map for prompt, if found then replace prompt
+				if !in_chat_thread {
+					if let Some(channel) = CHANNEL_PROMPTS.get(&thread.parent_id.unwrap()) {
+						// overwrite the system_prompt using the message content in the prompt channel
+						// async fn(self, impl AsRef<Http>, F) -> Result<Vec<Message, Global>, Error>
+						system_prompt = channel.messages(&ctx.http, |retriever| {
+							retriever.limit(1)
+						}).await.unwrap().first().unwrap().content.clone();
+						in_chat_thread = true;
+
+						info!("system_prompt = {:?}", system_prompt);
+					}
 				}
 			}
 		}
-	}
 
-	async fn message(&self, ctx: Context, msg: Message) {
-		unsafe {
-			if !THREAD_IDS.contains(&msg.channel_id.to_string()) {
-				return;
-			}
-		}
-
-		if msg.author.bot { // a stand in to stop the bot from looping back in on itself
+		if !in_chat_thread {
 			return;
 		}
-		info!("msg received from: {:?}", msg.author.name);
-		
+
+		// show typing
+		if let Err(e) = msg.channel_id.broadcast_typing(&ctx.http).await {
+			error!("Error sending message: {:?}", e);
+		}
+
+		// info!("msg received from: {:?}", msg.author.name);
+
 		// read all the messages in the thread (usually less than 50)
 		let msg_history = msg.channel_id.messages(&ctx.http, |retriever| {
 			retriever.limit(100)
@@ -69,7 +130,7 @@ impl EventHandler for Bot {
 		msgs.reverse();
 		msgs.insert(0, ChatCompletionRequestMessageArgs::default()
 			.role(Role::System)
-			.content("You are a helpful assistant.")
+			.content(system_prompt)
 			.build()
 			.unwrap());
 
@@ -79,7 +140,7 @@ impl EventHandler for Bot {
 		// chat call
 		let openai_client = async_openai::Client::new();
 		let request = CreateChatCompletionRequestArgs::default()
-			.max_tokens(512u16) // bad default?
+			.max_tokens(1024u16) // bad default?
 			.model("gpt-3.5-turbo")
 			.messages(msgs)
 			.build()
@@ -95,9 +156,12 @@ impl EventHandler for Bot {
 			.unwrap_or_else(String::new);
 
 
-		if let Err(e) = msg.channel_id.say(&ctx.http, last_message).await {
-			error!("Error sending message: {:?}", e);
-		}
+		let chunks = last_message.chars().collect::<Vec<_>>().chunks(2000).map(|chunk| chunk.iter().collect::<String>()).collect::<Vec<_>>();
+
+    // Send each chunk of the message as a separate message
+    for chunk in chunks {
+			msg.channel_id.say(&ctx.http, chunk).await.unwrap();
+    }
 	}
 
 	async fn ready(&self, _: Context, ready: Ready) {
@@ -124,44 +188,41 @@ async fn serenity(
 ) -> shuttle_serenity::ShuttleSerenity {
 	// Get the bot id set in `Secrets.toml`
 	let bot_id = if let Some(bot_id) = secret_store.get("BOT_ID") {
-		bot_id
-	} else {
+		bot_id} else {
 		return Err(anyhow!("'BOT_ID' was not found").into());
 	};
 	std::env::set_var("BOT_ID", bot_id);
 
-	// Get the parent channel id set in `Secrets.toml`
-	let parent_id = if let Some(parent_id) = secret_store.get("PARENT_ID") {
-		parent_id
-	} else {
-		return Err(anyhow!("'PARENT_ID' was not found").into());
+	// Get the category id set in `Secrets.toml`
+	let category_id = if let Some(category_id) = secret_store.get("CATEGORY_ID") { 
+		category_id } else {
+		return Err(anyhow!("'CATEGORY_ID' was not found").into());
 	};
-	std::env::set_var("PARENT_ID", parent_id);
+	std::env::set_var("CATEGORY_ID", category_id);
 
 	// Get the openai apikey set in `Secrets.toml`
-	let api_key = if let Some(api_key) = secret_store.get("OPENAI_API_KEY") {
-		api_key
-	} else {
+	let api_key = if let Some(api_key) = secret_store.get("OPENAI_API_KEY") { api_key } else {
 		return Err(anyhow!("'OPENAI_API_KEY' was not found").into());
 	};
 	std::env::set_var("OPENAI_API_KEY", api_key);
 
 	// Get the discord token set in `Secrets.toml`
-	let token = if let Some(token) = secret_store.get("DISCORD_TOKEN") {
-		token
-	} else {
+	let token = if let Some(token) = secret_store.get("DISCORD_TOKEN") { token } else {
 		return Err(anyhow!("'DISCORD_TOKEN' was not found").into());
-	};	
+	};
 
 	// Set gateway intents, which decides what events the bot will be notified about
 	let intents = GatewayIntents::GUILDS 
 		| GatewayIntents::GUILD_MESSAGES
+		// | GatewayIntents::GUILD_MESSAGE_TYPING
 		| GatewayIntents::MESSAGE_CONTENT;
 
 	let client = Client::builder(&token, intents)
 		.event_handler(Bot)
 		.await
 		.expect("Err creating client");
+
+
 
 	Ok(client.into())
 }
