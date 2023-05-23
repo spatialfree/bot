@@ -17,11 +17,19 @@ use tracing::{error, info};
 use lazy_static::lazy_static;
 
 lazy_static! {
-	static ref CHANNEL_PROMPTS: HashMap<ChannelId, String> = {
+	static ref CHANNEL_PROMPTS: HashMap<ChannelId, ChannelId> = { 
 		let mut map = HashMap::new();
-		// map.insert("default".to_string(), "You are a helpful assistant.".to_string());
-		map.insert(ChannelId(1107008959388332043), "🌟 I want you to act similarly to StumbleUpon 🕵️‍♂️ and randomly suggest something really interesting 🤔 and worth exploring further🔍. Let's create a truly engaging experience for fun! 🤩💡🚀".to_string());
-		map.insert(ChannelId(1109159447516946456), "For fun, list five seemingly impossible things, then suggest and briefly explain two potential solutions or approaches for each of the five things using available technologies, (including AI and XR tech), Then offer to do five more".to_string());
+		//         ChannelId(chat                  ChannelId(prompt
+		// get channel id pairs from bots.txt file
+		let pairs = std::fs::read_to_string("bots.txt")
+			.expect("Something went wrong reading the file bots.txt");
+		
+		for pair in pairs.lines() {
+			let mut split = pair.split_whitespace();
+			let chat = split.next().unwrap().parse::<u64>().unwrap();
+			let prompt = split.next().unwrap().parse::<u64>().unwrap();
+			map.insert(ChannelId(chat), ChannelId(prompt));
+		}
 
 		map
 	};
@@ -71,32 +79,36 @@ impl EventHandler for Bot {
 		// that doesn't work for some inexplicable reason...
 		
 		let mut in_chat_thread = false;
-		let mut system_prompt = "You are a helpful assistant.";
+		let mut system_prompt = "".to_string();
 		let threads = msg.guild(&ctx.cache).unwrap().threads;
-		threads.iter().filter(|&thread|
+		for thread in threads {
 			// if inside a matching thread
-			msg.channel_id == thread.id
-		).for_each(|thread| {
-			// check hash map for prompt, if found then replace prompt
-			if !in_chat_thread {
-				if let Some(p) = CHANNEL_PROMPTS.get(&thread.parent_id.unwrap()) {
-					system_prompt = p;
-	
-					in_chat_thread = true;
+			if msg.channel_id == thread.id {
+				// check hash map for prompt, if found then replace prompt
+				if !in_chat_thread {
+					if let Some(channel) = CHANNEL_PROMPTS.get(&thread.parent_id.unwrap()) {
+						// overwrite the system_prompt using the message content in the prompt channel
+						// async fn(self, impl AsRef<Http>, F) -> Result<Vec<Message, Global>, Error>
+						system_prompt = channel.messages(&ctx.http, |retriever| {
+							retriever.limit(1)
+						}).await.unwrap().first().unwrap().content.clone();
+						in_chat_thread = true;
+
+						info!("system_prompt = {:?}", system_prompt);
+					}
 				}
 			}
-		});
-		
+		}
+
 		if !in_chat_thread {
 			return;
 		}
-
 
 		// show typing
 		if let Err(e) = msg.channel_id.broadcast_typing(&ctx.http).await {
 			error!("Error sending message: {:?}", e);
 		}
-		
+
 		// info!("msg received from: {:?}", msg.author.name);
 
 		// read all the messages in the thread (usually less than 50)
@@ -118,7 +130,7 @@ impl EventHandler for Bot {
 		msgs.reverse();
 		msgs.insert(0, ChatCompletionRequestMessageArgs::default()
 			.role(Role::System)
-			.content(system_prompt.to_string())
+			.content(system_prompt)
 			.build()
 			.unwrap());
 
@@ -150,17 +162,6 @@ impl EventHandler for Bot {
     for chunk in chunks {
 			msg.channel_id.say(&ctx.http, chunk).await.unwrap();
     }
-
-		// alright this works
-		// though i want to chop them by 1000 instead of 2000
-		// and i want to stream in the chat completion
-		// so i can send the first message sooner
-		// but that is just polish
-
-		// the main thing is we need to be able to plug in a big prompt
-		// and customize the model
-		// to reduce the system prompt overhead
-
 	}
 
 	async fn ready(&self, _: Context, ready: Ready) {
