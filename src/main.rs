@@ -3,12 +3,9 @@ use anyhow::anyhow;
 use serenity::async_trait;
 // use serenity::client;
 use serenity::model::channel::Message;
-// use serenity::model::channel::GuildChannel;
 use serenity::model::gateway::Ready;
 use serenity::model::id::ChannelId;
 use serenity::model::id::UserId;
-// use serenity::model::prelude::ThreadListSyncEvent;
-// serenity::model::channel::ThreadsData;
 use serenity::prelude::*;
 // use shuttle_service::Environment;
 use shuttle_secrets::SecretStore;
@@ -16,22 +13,21 @@ use tracing::{error, info};
 
 use lazy_static::lazy_static;
 
+// this is a temporary system for wiring things up
 lazy_static! {
 	static ref CHANNEL_PROMPTS: HashMap<ChannelId, ChannelId> = { 
 		let mut map = HashMap::new();
 		//         ChannelId(chat                  ChannelId(prompt
 		map.insert(ChannelId(1103101252830765096), ChannelId(1110235580220063804));
+		map.insert(ChannelId(1110858323647017010), ChannelId(1110858298137251852));
+		map.insert(ChannelId(1110858562214834286), ChannelId(1110858542895878204));
 		
-		// get channel id pairs from bots.txt file
-		// let pairs = std::fs::read_to_string("bots.txt")
-		// 	.expect("Something went wrong reading the file bots.txt");
-		
-		// for pair in pairs.lines() {
-		// 	let mut split = pair.split_whitespace();
-		// 	let chat = split.next().unwrap().parse::<u64>().unwrap();
-		// 	let prompt = split.next().unwrap().parse::<u64>().unwrap();
-		// 	map.insert(ChannelId(chat), ChannelId(prompt));
-		// }
+		map.insert(ChannelId(1110861110921416766), ChannelId(1110861092474863678));
+		map.insert(ChannelId(1110861205133864990), ChannelId(1110861187048030248));
+		map.insert(ChannelId(1110861443047362663), ChannelId(1110861426546966618));
+
+		// dev
+		// map.insert(ChannelId(1103101252830765096), ChannelId(1110235580220063804));
 
 		map
 	};
@@ -47,38 +43,11 @@ struct Bot;
 
 #[async_trait]
 impl EventHandler for Bot {
-	// async fn thread_create(&self, ctx: Context, channel: GuildChannel) {
-	// 	info!("thread: {:?}", channel);
-	// 	// unsafe {
-	// 	// 	let parent_id : ChannelId = std::env::var("CATEGORY_ID")
-	// 	// 		.expect("Expected a parent id in the environment")
-	// 	// 		.parse()
-	// 	// 		.expect("The parent id was not a valid id");
-	// 	// 	if channel.parent_id == Some(parent_id) && !THREAD_IDS.contains(&channel.id.to_string()) {
-	// 	// 		THREAD_IDS += &channel.id.to_string();
-	// 	// 		// info!("threads: {:?}", THREAD_IDS);
-	// 	// 		if let Err(e) = channel.say(&ctx.http, "Hello!").await {
-	// 	// 			error!("Error sending message: {:?}", e);
-	// 	// 		}
-	// 	// 	}
-	// 	// }
-	// }
-
 	async fn message(&self, ctx: Context, msg: Message) {
 		// stop it from looping back in on itself
 		if msg.is_own(&ctx.cache) { 
 			return;
 		}
-		
-		// check if category is correct
-		// let category_id : ChannelId = std::env::var("CATEGORY_ID")
-		// 	.expect("Expected a category id in the environment")
-		// 	.parse()
-		// 	.expect("The category id was not a valid id");
-		// if category_id != msg.category_id(&ctx.cache).unwrap_or_else(|| ChannelId(0)) {
-		// 	return;
-		// }
-		// that doesn't work for some inexplicable reason...
 		
 		let mut in_chat_thread = false;
 		let mut system_prompt = "".to_string();
@@ -143,7 +112,7 @@ impl EventHandler for Bot {
 		let openai_client = async_openai::Client::new();
 		let request = CreateChatCompletionRequestArgs::default()
 			.max_tokens(1024u16) // bad default?
-			.model("gpt-3.5-turbo")
+			.model("gpt-4")
 			.messages(msgs)
 			.build()
 			.unwrap();
@@ -216,7 +185,6 @@ async fn serenity(
 	// Set gateway intents, which decides what events the bot will be notified about
 	let intents = GatewayIntents::GUILDS 
 		| GatewayIntents::GUILD_MESSAGES
-		// | GatewayIntents::GUILD_MESSAGE_TYPING
 		| GatewayIntents::MESSAGE_CONTENT;
 
 	let client = Client::builder(&token, intents)
