@@ -27,7 +27,7 @@ lazy_static! {
 		// map.insert(ChannelId(1110861443047362663), ChannelId(1110861426546966618));
 
 		// dev
-		map.insert(ChannelId(1103101252830765096), ChannelId(1110235580220063804));
+		map.insert(ChannelId(1103101223059587083), ChannelId(1110232499466018888));
 
 		map
 	};
