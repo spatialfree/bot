@@ -18,16 +18,16 @@ lazy_static! {
 	static ref CHANNEL_PROMPTS: HashMap<ChannelId, ChannelId> = { 
 		let mut map = HashMap::new();
 		//         ChannelId(chat                  ChannelId(prompt
-		map.insert(ChannelId(1103101252830765096), ChannelId(1110235580220063804));
-		map.insert(ChannelId(1110858323647017010), ChannelId(1110858298137251852));
-		map.insert(ChannelId(1110858562214834286), ChannelId(1110858542895878204));
+		// map.insert(ChannelId(1103101252830765096), ChannelId(1110235580220063804));
+		// map.insert(ChannelId(1110858323647017010), ChannelId(1110858298137251852));
+		// map.insert(ChannelId(1110858562214834286), ChannelId(1110858542895878204));
 		
-		map.insert(ChannelId(1110861110921416766), ChannelId(1110861092474863678));
-		map.insert(ChannelId(1110861205133864990), ChannelId(1110861187048030248));
-		map.insert(ChannelId(1110861443047362663), ChannelId(1110861426546966618));
+		// map.insert(ChannelId(1110861110921416766), ChannelId(1110861092474863678));
+		// map.insert(ChannelId(1110861205133864990), ChannelId(1110861187048030248));
+		// map.insert(ChannelId(1110861443047362663), ChannelId(1110861426546966618));
 
 		// dev
-		// map.insert(ChannelId(1103101252830765096), ChannelId(1110235580220063804));
+		map.insert(ChannelId(1103101252830765096), ChannelId(1110235580220063804));
 
 		map
 	};
