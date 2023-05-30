@@ -861,7 +861,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ideabrella-bot-dev"
+name = "ideabrella-bot"
 version = "0.1.0"
 dependencies = [
  "anyhow",

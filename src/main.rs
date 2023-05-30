@@ -23,29 +23,29 @@ lazy_static! {
 	static ref CHANNEL_PROMPTS: HashMap<ChannelId, ChannelId> = { 
 		let mut map = HashMap::new();
 		//         ChannelId(chat                  ChannelId(prompt
-		// map.insert(ChannelId(1103101252830765096), ChannelId(1110235580220063804));
-		// map.insert(ChannelId(1110858323647017010), ChannelId(1110858298137251852));
-		// map.insert(ChannelId(1110858562214834286), ChannelId(1110858542895878204));
+		map.insert(ChannelId(1103101252830765096), ChannelId(1110235580220063804));
+		map.insert(ChannelId(1110858323647017010), ChannelId(1110858298137251852));
+		map.insert(ChannelId(1110858562214834286), ChannelId(1110858542895878204));
 		
-		// map.insert(ChannelId(1110861110921416766), ChannelId(1110861092474863678));
-		// map.insert(ChannelId(1110861205133864990), ChannelId(1110861187048030248));
-		// map.insert(ChannelId(1110861443047362663), ChannelId(1110861426546966618));
+		map.insert(ChannelId(1110861110921416766), ChannelId(1110861092474863678));
+		map.insert(ChannelId(1110861205133864990), ChannelId(1110861187048030248));
+		map.insert(ChannelId(1110861443047362663), ChannelId(1110861426546966618));
 
-		// map.insert(ChannelId(1113021245240389686), ChannelId(1113021188013297705));
-		// map.insert(ChannelId(1113021309111259216), ChannelId(1113021291843301456));
-		// map.insert(ChannelId(1113021365226848287), ChannelId(1113021346688024596));
+		map.insert(ChannelId(1113021245240389686), ChannelId(1113021188013297705));
+		map.insert(ChannelId(1113021309111259216), ChannelId(1113021291843301456));
+		map.insert(ChannelId(1113021365226848287), ChannelId(1113021346688024596));
 		
-		// map.insert(ChannelId(1113021420893655091), ChannelId(1113021403566981140));
-		// map.insert(ChannelId(1113021465424576622), ChannelId(1113021448588644363));
-		// map.insert(ChannelId(1113021517844979762), ChannelId(1113021501264908369));
+		map.insert(ChannelId(1113021420893655091), ChannelId(1113021403566981140));
+		map.insert(ChannelId(1113021465424576622), ChannelId(1113021448588644363));
+		map.insert(ChannelId(1113021517844979762), ChannelId(1113021501264908369));
 
-		// map.insert(ChannelId(1113021558529732638), ChannelId(1113021542188724355));
-		// map.insert(ChannelId(1113021599826849892), ChannelId(1113021581728428114));
-		// map.insert(ChannelId(1113021637466525737), ChannelId(1113021620592844850));
-		// map.insert(ChannelId(1113021675768914001), ChannelId(1113021660317093889));
+		map.insert(ChannelId(1113021558529732638), ChannelId(1113021542188724355));
+		map.insert(ChannelId(1113021599826849892), ChannelId(1113021581728428114));
+		map.insert(ChannelId(1113021637466525737), ChannelId(1113021620592844850));
+		map.insert(ChannelId(1113021675768914001), ChannelId(1113021660317093889));
 
 		// dev
-		map.insert(ChannelId(1103101223059587083), ChannelId(1110232499466018888));
+		// map.insert(ChannelId(1103101223059587083), ChannelId(1110232499466018888));
 
 		map
 	};
