@@ -1,5 +1,10 @@
 use std::collections::HashMap;
 use anyhow::anyhow;
+use tracing::{error, info};
+
+// use shuttle_service::Environment;
+use shuttle_secrets::SecretStore;
+
 use serenity::async_trait;
 // use serenity::client;
 use serenity::model::channel::Message;
@@ -7,13 +12,13 @@ use serenity::model::gateway::Ready;
 use serenity::model::id::ChannelId;
 use serenity::model::id::UserId;
 use serenity::prelude::*;
-// use shuttle_service::Environment;
-use shuttle_secrets::SecretStore;
-use tracing::{error, info};
 
-use lazy_static::lazy_static;
+use async_openai::{
+	types::{ChatCompletionRequestMessageArgs, CreateChatCompletionRequestArgs, Role},
+};
 
 // this is a temporary system for wiring things up
+use lazy_static::lazy_static;
 lazy_static! {
 	static ref CHANNEL_PROMPTS: HashMap<ChannelId, ChannelId> = { 
 		let mut map = HashMap::new();
@@ -26,6 +31,19 @@ lazy_static! {
 		// map.insert(ChannelId(1110861205133864990), ChannelId(1110861187048030248));
 		// map.insert(ChannelId(1110861443047362663), ChannelId(1110861426546966618));
 
+		// map.insert(ChannelId(1113021245240389686), ChannelId(1113021188013297705));
+		// map.insert(ChannelId(1113021309111259216), ChannelId(1113021291843301456));
+		// map.insert(ChannelId(1113021365226848287), ChannelId(1113021346688024596));
+		
+		// map.insert(ChannelId(1113021420893655091), ChannelId(1113021403566981140));
+		// map.insert(ChannelId(1113021465424576622), ChannelId(1113021448588644363));
+		// map.insert(ChannelId(1113021517844979762), ChannelId(1113021501264908369));
+
+		// map.insert(ChannelId(1113021558529732638), ChannelId(1113021542188724355));
+		// map.insert(ChannelId(1113021599826849892), ChannelId(1113021581728428114));
+		// map.insert(ChannelId(1113021637466525737), ChannelId(1113021620592844850));
+		// map.insert(ChannelId(1113021675768914001), ChannelId(1113021660317093889));
+
 		// dev
 		map.insert(ChannelId(1103101223059587083), ChannelId(1110232499466018888));
 
@@ -33,13 +51,7 @@ lazy_static! {
 	};
 }
 
-
-use async_openai::{
-	types::{ChatCompletionRequestMessageArgs, CreateChatCompletionRequestArgs, Role},
-};
-
 struct Bot;
-
 
 #[async_trait]
 impl EventHandler for Bot {
@@ -191,8 +203,6 @@ async fn serenity(
 		.event_handler(Bot)
 		.await
 		.expect("Err creating client");
-
-
 
 	Ok(client.into())
 }
